@@ -18,13 +18,25 @@ fn main() {
     let asm = args.input.with_extension("s");
 
     // run `llc` to generate assembly
+    // TODO: should probably use some form of integrated llc (probably exists in bindings)
     let _ = std::process::Command::new("llc")
         .arg(bc)
         .arg("-o")
-        .arg(asm)
+        .arg(&asm)
         .output()
         .unwrap();
 
     // Compile assembly
-    // arm-none-eabi-gcc -o examples/simple_fn.elf examples/simple_fn.s startup.s -nostartfiles -nodefaultlibs -T./microbit.ld
+    // TODO: should probably use some form of integrated gcc
+    let elf = args.input.with_extension("elf");
+    let _ = std::process::Command::new("arm-none-eabi-gcc")
+        .arg("-o")
+        .arg(&elf)
+        .arg(&asm)
+        .arg("startup.s")
+        .arg("-nostartfiles")
+        .arg("-nodefaultlibs")
+        .arg("-T./microbit.ld")
+        .output()
+        .unwrap();
 }
