@@ -1,13 +1,23 @@
-use crate::ast::{BinOp, Block, ConstExpression, Constant, Expression, Function, Module};
+use crate::ast::{BinOp, Block, Expression, Function, Module, Statement, Variable, VariableDefinition};
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module as LLVMModule;
-use inkwell::values::{BasicValueEnum, IntValue};
+use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
+use std::collections::HashMap;
+use std::rc::Rc;
+
+enum NamedValue<'ctx> {
+    Constant,
+    Variable(PointerValue<'ctx>),
+}
 
 pub struct Compiler<'a, 'ctx> {
     pub context: &'ctx Context,
     pub builder: &'a Builder<'ctx>,
     pub module: &'a LLVMModule<'ctx>,
+
+    current_function: Option<FunctionValue<'ctx>>,
+    named_values: HashMap<Rc<str>, NamedValue<'ctx>>,
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
@@ -21,6 +31,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             context,
             builder,
             module,
+            current_function: None,
+            named_values: HashMap::new(),
         }
     }
 
@@ -43,8 +55,10 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             .add_function(&function.name, function_type, None);
         let entry = self.context.append_basic_block(func, "entry");
         self.builder.position_at_end(entry);
+        self.current_function = Some(func);
         let body = self.compile_expression(&function.body)?;
         self.builder.build_return(Some(&body))?;
+        self.current_function = None;
 
         if func.verify(true) {
             return Ok(());
@@ -52,12 +66,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         panic!("Function verification failed");
     }
 
-    fn compile_constant(&mut self, constant: &Constant) -> Result<(), BuilderError> {
-        let value = self.compile_const_expr(&constant.value)?;
+    fn compile_constant(&mut self, constant: &Variable) -> Result<(), BuilderError> {
+        let name = constant.spec.name.clone();
+        let value = self.compile_expression(&constant.value)?;
         let const_type = self.context.i32_type();
-        let constant = self.module.add_global(const_type, None, &constant.name);
+        let constant = self.module.add_global(const_type, None, &constant.spec.name);
         constant.set_constant(true);
         constant.set_initializer(&value);
+        self.named_values.insert(name, NamedValue::Constant);
         Ok(())
     }
 
@@ -66,27 +82,29 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         expression: &Expression,
     ) -> Result<IntValue<'ctx>, BuilderError> {
         match expression {
-            Expression::ConstExpression(c) => self.compile_const_expr(c),
+            Expression::Integer(x) => Ok(self.context.i32_type().const_int(*x, false)),
+            Expression::Variable(name) => match self.named_values.get(name) {
+                Some(NamedValue::Constant) => {
+                    let c = self
+                        .module
+                        .get_global(name)
+                        .unwrap_or_else(|| panic!("Constant {} not found", name));
+                    self.builder
+                        .build_load(self.context.i32_type(), c.as_pointer_value(), "loadconst")
+                        .map(BasicValueEnum::into_int_value)
+                }
+                Some(NamedValue::Variable(ptr)) => self
+                    .builder
+                    .build_load(
+                        self.context.i32_type(),
+                        *ptr,
+                        &format!("load_{}", name),
+                    )
+                    .map(BasicValueEnum::into_int_value),
+                None => panic!("Variable {} not found", name),
+            },
             Expression::BinOp(op) => self.compile_binop(op),
             Expression::Block(block) => self.compile_block(block),
-        }
-    }
-
-    fn compile_const_expr(
-        &mut self,
-        constant: &ConstExpression,
-    ) -> Result<IntValue<'ctx>, BuilderError> {
-        match constant {
-            ConstExpression::Integer(x) => Ok(self.context.i32_type().const_int(*x, false)),
-            ConstExpression::Constant(constant) => {
-                let c = self
-                    .module
-                    .get_global(&constant.name)
-                    .unwrap_or_else(|| panic!("Constant `{}` not found", constant.name));
-                self.builder
-                    .build_load(self.context.i32_type(), c.as_pointer_value(), "loadconst")
-                    .map(BasicValueEnum::into_int_value)
-            }
         }
     }
 
@@ -119,7 +137,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         if let Some(err) = block
             .body
             .iter()
-            .map(|expr| self.compile_expression(expr))
+            .map(|stmt| self.compile_statement(stmt))
             .filter_map(Result::err)
             .next()
         {
@@ -130,5 +148,27 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         } else {
             Ok(self.context.i32_type().const_int(0, false))
         }
+    }
+
+    fn compile_statement(&mut self, stmt: &Statement) -> Result<(), BuilderError> {
+        match stmt {
+            Statement::Expression(expr) => self.compile_expression(expr).map(|_| ()),
+            Statement::VariableDefinition(def) => self.compile_variable_definition(def),
+        }
+    }
+
+    fn compile_variable_definition(
+        &mut self,
+        def: &VariableDefinition,
+    ) -> Result<(), BuilderError> {
+        let var = self
+            .builder
+            .build_alloca(self.context.i32_type(), &def.name)?;
+        if let Some(value) = &def.value {
+            let value = self.compile_expression(value)?;
+            self.builder.build_store(var, value)?;
+        }
+        self.named_values.insert(def.name.clone(), NamedValue::Variable(var));
+        Ok(())
     }
 }

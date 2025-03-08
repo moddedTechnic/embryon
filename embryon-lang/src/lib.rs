@@ -60,9 +60,20 @@ mod tests {
 
     #[test]
     fn simple_constant() {
-        let source = "const x = 0";
+        let source = "const x = 0;";
         let mut tokens = crate::lexer::TokenStream::new(source.into());
-        let _program = Module::parse_body(&mut tokens, "simple_constant".into()).unwrap();
+        let program = Module::parse_body(&mut tokens, "simple_constant".into()).unwrap();
+
+        assert_eq!(
+            program,
+            Module {
+                name: "simple_constant".into(),
+                definitions: vec![Definition::Constant(Variable {
+                    spec: VariableSpec { name: "x".into() },
+                    value: Box::new(Expression::Integer(0)),
+                })],
+            },
+        );
     }
 
     #[test]
@@ -79,8 +90,8 @@ mod tests {
                     name: "main".into(),
                     parameters: vec![],
                     body: Expression::BinOp(BinOp::Add(
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(1))),
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(2))),
+                        Box::new(Expression::Integer(1)),
+                        Box::new(Expression::Integer(2)),
                     ))
                 })],
             },
@@ -101,8 +112,8 @@ mod tests {
                     name: "main".into(),
                     parameters: vec![],
                     body: Expression::BinOp(BinOp::Sub(
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(1))),
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(2))),
+                        Box::new(Expression::Integer(1)),
+                        Box::new(Expression::Integer(2)),
                     ))
                 })],
             },
@@ -123,8 +134,8 @@ mod tests {
                     name: "main".into(),
                     parameters: vec![],
                     body: Expression::BinOp(BinOp::Mul(
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(1))),
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(2))),
+                        Box::new(Expression::Integer(1)),
+                        Box::new(Expression::Integer(2)),
                     ))
                 })],
             },
@@ -145,8 +156,8 @@ mod tests {
                     name: "main".into(),
                     parameters: vec![],
                     body: Expression::BinOp(BinOp::Div(
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(1))),
-                        Box::new(Expression::ConstExpression(ConstExpression::Integer(2))),
+                        Box::new(Expression::Integer(1)),
+                        Box::new(Expression::Integer(2)),
                     ))
                 })],
             },
@@ -190,9 +201,7 @@ mod tests {
                     parameters: vec![],
                     body: Expression::Block(Block {
                         body: vec![],
-                        last: Some(Box::new(Expression::ConstExpression(
-                            ConstExpression::Integer(0)
-                        )))
+                        last: Some(Box::new(Expression::Integer(0)))
                     })
                 })],
             },
@@ -213,10 +222,82 @@ mod tests {
                     name: "main".into(),
                     parameters: vec![],
                     body: Expression::Block(Block {
-                        body: vec![Expression::ConstExpression(ConstExpression::Integer(1))],
-                        last: Some(Box::new(Expression::ConstExpression(
-                            ConstExpression::Integer(2)
-                        )))
+                        body: vec![Statement::Expression(Expression::Integer(1))],
+                        last: Some(Box::new(Expression::Integer(2)))
+                    })
+                })],
+            },
+        )
+    }
+
+    #[test]
+    fn let_immutable() {
+        let source = "fn main() { let x = 1; }";
+        let mut tokens = crate::lexer::TokenStream::new(source.into());
+        let program = Module::parse_body(&mut tokens, "let_immutable".into()).unwrap();
+
+        assert_eq!(
+            program,
+            Module {
+                name: "let_immutable".into(),
+                definitions: vec![Definition::Function(Function {
+                    name: "main".into(),
+                    parameters: vec![],
+                    body: Expression::Block(Block {
+                        body: vec![Statement::VariableDefinition(VariableDefinition {
+                            name: "x".into(),
+                            is_mutable: false,
+                            value: Some(Box::new(Expression::Integer(1)))
+                        })],
+                        last: None
+                    })
+                })],
+            },
+        )
+    }
+
+    #[test]
+    fn let_mutable() {
+        let source = "fn main() { let mut x = 1; }";
+        let mut tokens = crate::lexer::TokenStream::new(source.into());
+        let program = Module::parse_body(&mut tokens, "let_mutable".into()).unwrap();
+
+        assert_eq!(
+            program,
+            Module {
+                name: "let_mutable".into(),
+                definitions: vec![Definition::Function(Function {
+                    name: "main".into(),
+                    parameters: vec![],
+                    body: Expression::Block(Block {
+                        body: vec![Statement::VariableDefinition(VariableDefinition {
+                            name: "x".into(),
+                            is_mutable: true,
+                            value: Some(Box::new(Expression::Integer(1)))
+                        })],
+                        last: None
+                    })
+                })],
+            },
+        )
+    }
+
+    #[test]
+    fn use_variable() {
+        let source = "fn main() { x }";
+        let mut tokens = crate::lexer::TokenStream::new(source.into());
+        let program = Module::parse_body(&mut tokens, "let_mutable".into()).unwrap();
+
+        assert_eq!(
+            program,
+            Module {
+                name: "let_mutable".into(),
+                definitions: vec![Definition::Function(Function {
+                    name: "main".into(),
+                    parameters: vec![],
+                    body: Expression::Block(Block {
+                        body: vec![],
+                        last: Some(Box::new(Expression::Variable("x".into())))
                     })
                 })],
             },

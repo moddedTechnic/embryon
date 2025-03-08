@@ -1,4 +1,7 @@
-use crate::ast::{BinOp, Block, ConstExpression, Constant, Expression, Function, Module};
+use crate::ast::{
+    BinOp, Block, Definition, Expression, Function, Module, Statement, Variable,
+    VariableDefinition, VariableSpec,
+};
 use crate::lexer::TokenStream;
 use crate::tokens::Token;
 use std::rc::Rc;
@@ -8,6 +11,7 @@ pub enum ParseError {
     UnexpectedToken(Token),
     ExpectedToken(Token),
     UnexpectedEoF,
+    ExpectedExpression,
 }
 
 impl Module {
@@ -16,10 +20,10 @@ impl Module {
         while let Some(token) = tokens.peek() {
             match token {
                 Token::Fn => {
-                    definitions.push(crate::ast::Definition::Function(Function::parse(tokens)?));
+                    definitions.push(Definition::Function(Function::parse(tokens)?));
                 }
                 Token::Const => {
-                    definitions.push(crate::ast::Definition::Constant(Constant::parse(tokens)?));
+                    definitions.push(Definition::parse_constant(tokens)?);
                 }
                 _ => {
                     dbg!(token);
@@ -28,6 +32,20 @@ impl Module {
             }
         }
         Ok(Module { name, definitions })
+    }
+}
+
+impl Definition {
+    pub fn parse_constant(tokens: &mut TokenStream) -> Result<Self, ParseError> {
+        tokens.expect(Token::Const)?;
+        let name = tokens.expect_identifier()?;
+        tokens.expect(Token::Equal)?;
+        let value = Expression::parse(tokens)?;
+        tokens.expect(Token::Semi)?;
+        Ok(Self::Constant(Variable {
+            spec: VariableSpec { name: name.into() },
+            value: Box::new(value),
+        }))
     }
 }
 
@@ -43,29 +61,6 @@ impl Function {
             parameters: Vec::new(),
             body,
         })
-    }
-}
-
-impl Constant {
-    pub fn parse(tokens: &mut TokenStream) -> Result<Self, ParseError> {
-        tokens.expect(Token::Const)?;
-        let name = tokens.expect_identifier()?;
-        tokens.expect(Token::Equal)?;
-        let value = ConstExpression::parse(tokens)?;
-        Ok(Constant {
-            name: name.into(),
-            value,
-        })
-    }
-}
-
-impl ConstExpression {
-    pub fn parse(tokens: &mut TokenStream) -> Result<Self, ParseError> {
-        match tokens.next() {
-            Some(Token::Integer(value)) => Ok(ConstExpression::Integer(value)),
-            Some(token) => Err(ParseError::UnexpectedToken(token)),
-            None => Err(ParseError::ExpectedToken(Token::Integer(0))),
-        }
     }
 }
 
@@ -130,18 +125,8 @@ impl Expression {
                 Ok(expression)
             }
             Some(Token::OpenBrace) => Self::parse_block(tokens),
-            Some(Token::Identifier(name)) => {
-                Ok(Expression::ConstExpression(ConstExpression::Constant(
-                    Constant {
-                        name,
-                        value: ConstExpression::Integer(0),
-                    }
-                    .into(),
-                )))
-            }
-            Some(Token::Integer(value)) => {
-                Ok(Expression::ConstExpression(ConstExpression::Integer(value)))
-            }
+            Some(Token::Identifier(name)) => Ok(Expression::Variable(name)),
+            Some(Token::Integer(value)) => Ok(Expression::Integer(value)),
             Some(token) => Err(ParseError::UnexpectedToken(token)),
             None => Err(ParseError::UnexpectedEoF),
         }
@@ -151,7 +136,7 @@ impl Expression {
         let mut body = Vec::new();
         let mut last = None;
         while !matches!(tokens.peek(), Some(Token::CloseBrace) | Some(Token::Semi)) {
-            let expr = Self::parse(tokens)?;
+            let expr = Statement::parse(tokens)?;
             match tokens.peek() {
                 Some(Token::Semi) => {
                     body.push(expr);
@@ -163,9 +148,45 @@ impl Expression {
             }
         }
         tokens.expect(Token::CloseBrace)?;
+
+        let last = match last {
+            None => None,
+            Some(Statement::Expression(expr)) => Some(expr),
+            _ => return Err(ParseError::ExpectedExpression),
+        };
+
         Ok(Self::Block(Block {
             body,
             last: last.map(Box::new),
         }))
+    }
+}
+
+impl Statement {
+    pub fn parse(tokens: &mut TokenStream) -> Result<Self, ParseError> {
+        match tokens.peek() {
+            Some(Token::Let) => Ok(Self::VariableDefinition(VariableDefinition::parse(tokens)?)),
+            _ => Ok(Self::Expression(Expression::parse(tokens)?)),
+        }
+    }
+}
+
+impl VariableDefinition {
+    pub fn parse(tokens: &mut TokenStream) -> Result<Self, ParseError> {
+        tokens.expect(Token::Let)?;
+        let is_mutable = if matches!(tokens.peek(), Some(Token::Mut)) {
+            tokens.next();
+            true
+        } else {
+            false
+        };
+        let identifier = tokens.expect_identifier()?;
+        tokens.expect(Token::Equal)?;
+        let value = Expression::parse(tokens)?;
+        Ok(Self {
+            name: identifier.into(),
+            is_mutable,
+            value: Some(Box::new(value)),
+        })
     }
 }

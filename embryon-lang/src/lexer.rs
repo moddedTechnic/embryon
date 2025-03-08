@@ -114,6 +114,7 @@ impl TokenStream {
         match name.as_str() {
             "const" => Some(Token::Const),
             "let" => Some(Token::Let),
+            "mut" => Some(Token::Mut),
             "fn" => Some(Token::Fn),
             _ if !name.is_empty() => Some(Token::Identifier(Rc::from(name))),
             _ => None,
@@ -170,10 +171,12 @@ mod tests {
 
     #[test]
     fn lex_keywords() {
-        let source = "const let fn";
+        let source = "const let mut fn";
         let mut lex = TokenStream::new(source.into());
         assert_eq!(lex.next(), Some(Token::Const));
         assert_eq!(lex.next(), Some(Token::Let));
+        assert_eq!(lex.next(), Some(Token::Mut));
         assert_eq!(lex.next(), Some(Token::Fn));
+        assert_eq!(lex.next(), None);
     }
 }

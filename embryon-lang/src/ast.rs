@@ -9,31 +9,31 @@ pub struct Module {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Definition {
     Function(Function),
-    Constant(Constant),
+    Constant(Variable),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function {
     pub name: String,
-    pub parameters: Vec<Constant>,
+    pub parameters: Vec<VariableSpec>,
     pub body: Expression,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Constant {
+pub struct VariableSpec {
     pub name: Rc<str>,
-    pub value: ConstExpression,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConstExpression {
-    Integer(u64),
-    Constant(Box<Constant>),
+pub struct Variable {
+    pub spec: VariableSpec,
+    pub value: Box<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
-    ConstExpression(ConstExpression),
+    Integer(u64),
+    Variable(Rc<str>),
     BinOp(BinOp),
     Block(Block),
 }
@@ -48,6 +48,19 @@ pub enum BinOp {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub body: Vec<Expression>,
+    pub body: Vec<Statement>,
     pub last: Option<Box<Expression>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Statement {
+    Expression(Expression),
+    VariableDefinition(VariableDefinition),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VariableDefinition {
+    pub name: Rc<str>,
+    pub is_mutable: bool,
+    pub value: Option<Box<Expression>>,
 }

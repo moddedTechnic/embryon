@@ -4,6 +4,7 @@ use std::rc::Rc;
 pub enum Token {
     Const,
     Let,
+    Mut,
     Fn,
     OpenParen,
     CloseParen,
