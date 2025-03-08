@@ -1,3 +1,4 @@
+use std::os::unix::prelude::CommandExt;
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -11,20 +12,10 @@ fn main() {
     let args = Args::parse();
     let source = std::fs::read_to_string(&args.input).unwrap();
     let tokens = embryon_lang::lex(&source);
-    let program = embryon_lang::parse(tokens).unwrap();
+    let program = embryon_lang::parse(tokens).expect("failed to compile program");
     embryon_lang::compile(program, &args.input);
 
-    let bc = args.input.with_extension("bc");
     let asm = args.input.with_extension("s");
-
-    // run `llc` to generate assembly
-    // TODO: should probably use some form of integrated llc (probably exists in bindings)
-    let _ = std::process::Command::new("llc")
-        .arg(bc)
-        .arg("-o")
-        .arg(&asm)
-        .output()
-        .unwrap();
 
     // Compile assembly
     // TODO: should probably use some form of integrated gcc
@@ -37,6 +28,5 @@ fn main() {
         .arg("-nostartfiles")
         .arg("-nodefaultlibs")
         .arg("-T./microbit.ld")
-        .output()
-        .unwrap();
+        .exec();
 }

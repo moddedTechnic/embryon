@@ -13,5 +13,5 @@ pub enum Token {
     Star,
     Slash,
     Identifier(Rc<str>),
-    Integer(i64),
+    Integer(u64),
 }

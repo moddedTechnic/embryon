@@ -53,7 +53,7 @@ impl TokenStream {
             return;
         };
         self.head = match c {
-            ' ' => {
+            _ if c.is_whitespace() => {
                 self.cursor += 1;
                 return self.read_next();
             }

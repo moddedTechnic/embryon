@@ -21,7 +21,10 @@ impl Module {
                 Token::Const => {
                     definitions.push(crate::ast::Definition::Constant(Constant::parse(tokens)?));
                 }
-                _ => return Err(ParseError::UnexpectedToken(token.clone())),
+                _ => {
+                    dbg!(token);
+                    return Err(ParseError::UnexpectedToken(token.clone()))
+                },
             }
         }
         Ok(Module { name, definitions })
