@@ -1,4 +1,4 @@
-use crate::ast::{BinOp, ConstExpression, Constant, Expression, Function, Module};
+use crate::ast::{BinOp, Block, ConstExpression, Constant, Expression, Function, Module};
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module as LLVMModule;
@@ -68,7 +68,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         match expression {
             Expression::ConstExpression(c) => self.compile_const_expr(c),
             Expression::BinOp(op) => self.compile_binop(op),
-            Expression::Block(_) => todo!("Compile block expression"),
+            Expression::Block(block) => self.compile_block(block),
         }
     }
 
@@ -112,6 +112,23 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 let rhs = self.compile_expression(rhs)?;
                 self.builder.build_int_signed_div(lhs, rhs, "divtmp")
             }
+        }
+    }
+
+    fn compile_block(&mut self, block: &Block) -> Result<IntValue<'ctx>, BuilderError> {
+        if let Some(err) = block
+            .body
+            .iter()
+            .map(|expr| self.compile_expression(expr))
+            .filter_map(Result::err)
+            .next()
+        {
+            return Err(err);
+        }
+        if let Some(last) = &block.last {
+            self.compile_expression(last)
+        } else {
+            Ok(self.context.i32_type().const_int(0, false))
         }
     }
 }
