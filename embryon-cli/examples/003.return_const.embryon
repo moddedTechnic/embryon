@@ -1,0 +1,4 @@
+
+const X = 5
+
+fn main() X

@@ -1,0 +1,12 @@
+extern fn main;
+
+fn _start() {
+    unsafe { $sp = 0x20002000 };
+
+    main();
+
+    loop {}
+}
+
+fn __aeabi_unwind_cpp_pr0() ();
+
