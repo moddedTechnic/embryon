@@ -52,42 +52,35 @@ impl TokenStream {
             self.head = None;
             return;
         };
-        self.head = match c {
-            _ if c.is_whitespace() => {
-                self.cursor += 1;
-                return self.read_next();
+        if let Some(token) = Self::from_symbol(c) {
+            self.cursor += 1;
+            self.head = Some(token);
+        } else {
+            self.head = match c {
+                _ if c.is_whitespace() => {
+                    self.cursor += 1;
+                    return self.read_next();
+                }
+                '0'..='9' => self.read_number(),
+                _ => self.read_identifier(),
             }
-            '(' => {
-                self.cursor += 1;
-                Some(Token::OpenParen)
-            }
-            ')' => {
-                self.cursor += 1;
-                Some(Token::CloseParen)
-            }
-            '+' => {
-                self.cursor += 1;
-                Some(Token::Plus)
-            }
-            '-' => {
-                self.cursor += 1;
-                Some(Token::Minus)
-            }
-            '*' => {
-                self.cursor += 1;
-                Some(Token::Star)
-            }
-            '/' => {
-                self.cursor += 1;
-                Some(Token::Slash)
-            }
-            '=' => {
-                self.cursor += 1;
-                Some(Token::Equal)
-            }
-            '0'..='9' => self.read_number(),
-            _ => self.read_identifier(),
         };
+    }
+
+    fn from_symbol(symbol: char) -> Option<Token> {
+        match symbol {
+            '(' => Some(Token::OpenParen),
+            ')' => Some(Token::CloseParen),
+            '{' => Some(Token::OpenBrace),
+            '}' => Some(Token::CloseBrace),
+            ';' => Some(Token::Semi),
+            '+' => Some(Token::Plus),
+            '-' => Some(Token::Minus),
+            '*' => Some(Token::Star),
+            '/' => Some(Token::Slash),
+            '=' => Some(Token::Equal),
+            _ => None,
+        }
     }
 
     fn read_number(&mut self) -> Option<Token> {
@@ -136,5 +129,51 @@ impl Iterator for TokenStream {
             self.read_next();
         }
         self.head.take()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lexer::TokenStream;
+    use crate::tokens::Token;
+
+    #[test]
+    fn lex_symbols() {
+        let source = "(){}+-*/=;";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), Some(Token::OpenParen));
+        assert_eq!(lex.next(), Some(Token::CloseParen));
+        assert_eq!(lex.next(), Some(Token::OpenBrace));
+        assert_eq!(lex.next(), Some(Token::CloseBrace));
+        assert_eq!(lex.next(), Some(Token::Plus));
+        assert_eq!(lex.next(), Some(Token::Minus));
+        assert_eq!(lex.next(), Some(Token::Star));
+        assert_eq!(lex.next(), Some(Token::Slash));
+        assert_eq!(lex.next(), Some(Token::Equal));
+        assert_eq!(lex.next(), Some(Token::Semi));
+        assert_eq!(lex.next(), None);
+    }
+
+    #[test]
+    fn lex_identifiers() {
+        let source = "foobar";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), Some(Token::Identifier("foobar".into())));
+    }
+
+    #[test]
+    fn lex_numbers() {
+        let source = "123";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), Some(Token::Integer(123)));
+    }
+
+    #[test]
+    fn lex_keywords() {
+        let source = "const let fn";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), Some(Token::Const));
+        assert_eq!(lex.next(), Some(Token::Let));
+        assert_eq!(lex.next(), Some(Token::Fn));
     }
 }

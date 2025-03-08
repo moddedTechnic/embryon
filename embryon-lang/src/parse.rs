@@ -1,7 +1,7 @@
-use std::rc::Rc;
-use crate::ast::{BinOp, ConstExpression, Constant, Expression, Function, Module};
+use crate::ast::{BinOp, Block, ConstExpression, Constant, Expression, Function, Module};
 use crate::lexer::TokenStream;
 use crate::tokens::Token;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -23,8 +23,8 @@ impl Module {
                 }
                 _ => {
                     dbg!(token);
-                    return Err(ParseError::UnexpectedToken(token.clone()))
-                },
+                    return Err(ParseError::UnexpectedToken(token.clone()));
+                }
             }
         }
         Ok(Module { name, definitions })
@@ -52,7 +52,10 @@ impl Constant {
         let name = tokens.expect_identifier()?;
         tokens.expect(Token::Equal)?;
         let value = ConstExpression::parse(tokens)?;
-        Ok(Constant { name: name.into(), value })
+        Ok(Constant {
+            name: name.into(),
+            value,
+        })
     }
 }
 
@@ -126,17 +129,43 @@ impl Expression {
                 tokens.expect(Token::CloseParen)?;
                 Ok(expression)
             }
-            Some(Token::Identifier(name)) => Ok(Expression::ConstExpression(
-                ConstExpression::Constant(Constant {
-                    name,
-                    value: ConstExpression::Integer(0),
-                }.into()),
-            )),
+            Some(Token::OpenBrace) => Self::parse_block(tokens),
+            Some(Token::Identifier(name)) => {
+                Ok(Expression::ConstExpression(ConstExpression::Constant(
+                    Constant {
+                        name,
+                        value: ConstExpression::Integer(0),
+                    }
+                    .into(),
+                )))
+            }
             Some(Token::Integer(value)) => {
                 Ok(Expression::ConstExpression(ConstExpression::Integer(value)))
             }
             Some(token) => Err(ParseError::UnexpectedToken(token)),
             None => Err(ParseError::UnexpectedEoF),
         }
+    }
+
+    fn parse_block(tokens: &mut TokenStream) -> Result<Self, ParseError> {
+        let mut body = Vec::new();
+        let mut last = None;
+        while !matches!(tokens.peek(), Some(Token::CloseBrace) | Some(Token::Semi)) {
+            let expr = Self::parse(tokens)?;
+            match tokens.peek() {
+                Some(Token::Semi) => {
+                    body.push(expr);
+                    tokens.next();
+                }
+                Some(Token::CloseBrace) => last = Some(expr),
+                None => return Err(ParseError::UnexpectedEoF),
+                Some(token) => return Err(ParseError::UnexpectedToken(token.clone())),
+            }
+        }
+        tokens.expect(Token::CloseBrace)?;
+        Ok(Self::Block(Block {
+            body,
+            last: last.map(Box::new),
+        }))
     }
 }

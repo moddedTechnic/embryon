@@ -1,8 +1,8 @@
-use crate::ast::{BinOp, ConstExpression, Expression, Function, Module};
+use crate::ast::{BinOp, ConstExpression, Constant, Expression, Function, Module};
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module as LLVMModule;
-use inkwell::values::IntValue;
+use inkwell::values::{BasicValueEnum, IntValue};
 
 pub struct Compiler<'a, 'ctx> {
     pub context: &'ctx Context,
@@ -30,7 +30,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         for definition in &module.definitions {
             match definition {
                 crate::ast::Definition::Function(function) => self.compile_function(function)?,
-                crate::ast::Definition::Constant(_constant) => todo!("compile constant"),
+                crate::ast::Definition::Constant(constant) => self.compile_constant(constant)?,
             }
         }
         Ok(())
@@ -52,16 +52,41 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         panic!("Function verification failed");
     }
 
+    fn compile_constant(&mut self, constant: &Constant) -> Result<(), BuilderError> {
+        let value = self.compile_const_expr(&constant.value)?;
+        let const_type = self.context.i32_type();
+        let constant = self.module.add_global(const_type, None, &constant.name);
+        constant.set_constant(true);
+        constant.set_initializer(&value);
+        Ok(())
+    }
+
     fn compile_expression(
         &mut self,
         expression: &Expression,
     ) -> Result<IntValue<'ctx>, BuilderError> {
         match expression {
-            Expression::ConstExpression(c) => match c {
-                ConstExpression::Integer(x) => Ok(self.context.i32_type().const_int(*x, false)),
-                ConstExpression::Constant(_) => todo!("Compile constant as expression"),
-            },
+            Expression::ConstExpression(c) => self.compile_const_expr(c),
             Expression::BinOp(op) => self.compile_binop(op),
+            Expression::Block(_) => todo!("Compile block expression"),
+        }
+    }
+
+    fn compile_const_expr(
+        &mut self,
+        constant: &ConstExpression,
+    ) -> Result<IntValue<'ctx>, BuilderError> {
+        match constant {
+            ConstExpression::Integer(x) => Ok(self.context.i32_type().const_int(*x, false)),
+            ConstExpression::Constant(constant) => {
+                let c = self
+                    .module
+                    .get_global(&constant.name)
+                    .unwrap_or_else(|| panic!("Constant `{}` not found", constant.name));
+                self.builder
+                    .build_load(self.context.i32_type(), c.as_pointer_value(), "loadconst")
+                    .map(BasicValueEnum::into_int_value)
+            }
         }
     }
 
