@@ -40,14 +40,57 @@ impl TokenStream {
         }
     }
 
+    fn peek_char(&self, lookahead: usize) -> Option<char> {
+        self.source
+            .as_bytes()
+            .get(self.cursor + lookahead)
+            .copied()
+            .map(|c| c as char)
+    }
+
+    fn skip_whitespace(&mut self) {
+        while let Some(c) = self.peek_char(0) {
+            if !c.is_whitespace() {
+                break;
+            }
+            self.cursor += 1;
+        }
+    }
+
+    fn skip_until(&mut self, sequence: &str) {
+        while self.cursor < self.source.len() && !self.source[self.cursor..].starts_with(sequence) {
+            self.cursor += 1;
+        }
+    }
+
+    fn skip_comment(&mut self) {
+        self.skip_whitespace();
+        if self.peek_char(0) != Some('/') {
+            return
+        }
+        if self.peek_char(1) == Some('/') {
+            self.skip_until("\n");
+            self.skip_whitespace();
+            self.skip_comment();
+            return
+        }
+        if self.peek_char(1) == Some('*') {
+            self.skip_until("*/");
+            self.cursor += 2;
+            self.skip_whitespace();
+            self.skip_comment();
+        }
+    }
+
     fn read_next(&mut self) {
         if self.cursor >= self.source.len() {
             self.head = None;
             return;
         }
-        let c = self.source.as_bytes().get(self.cursor);
+        self.skip_comment();
+        let c = self.peek_char(0);
         let c = if let Some(c) = c {
-            *c as char
+            c
         } else {
             self.head = None;
             return;
@@ -57,10 +100,6 @@ impl TokenStream {
             self.head = Some(token);
         } else {
             self.head = match c {
-                _ if c.is_whitespace() => {
-                    self.cursor += 1;
-                    return self.read_next();
-                }
                 '0'..='9' => self.read_number(),
                 _ => self.read_identifier(),
             }
@@ -177,6 +216,35 @@ mod tests {
         assert_eq!(lex.next(), Some(Token::Let));
         assert_eq!(lex.next(), Some(Token::Mut));
         assert_eq!(lex.next(), Some(Token::Fn));
+        assert_eq!(lex.next(), None);
+    }
+
+    #[test]
+    fn lex_single_comment() {
+        let source = "// this is a comment";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), None);
+
+        let source = "// this is a comment\n// this is another comment";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), None);
+    }
+
+    #[test]
+    fn lex_multi_comment() {
+        let source = "/* this is a comment */";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), None);
+
+        let source = "/* this is \n a comment *//* this is another comment */";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), None);
+    }
+
+    #[test]
+    fn lex_mixed_comments() {
+        let source = "/* this is a comment */ // this is another comment";
+        let mut lex = TokenStream::new(source.into());
         assert_eq!(lex.next(), None);
     }
 }
