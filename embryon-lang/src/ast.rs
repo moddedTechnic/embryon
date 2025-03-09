@@ -22,6 +22,7 @@ pub struct Function {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableSpec {
     pub name: Rc<str>,
+    pub is_mutable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,7 +61,6 @@ pub enum Statement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableDefinition {
-    pub name: Rc<str>,
-    pub is_mutable: bool,
+    pub spec: VariableSpec,
     pub value: Option<Box<Expression>>,
 }

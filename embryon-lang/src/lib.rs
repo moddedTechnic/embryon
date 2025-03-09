@@ -69,7 +69,10 @@ mod tests {
             Module {
                 name: "simple_constant".into(),
                 definitions: vec![Definition::Constant(Variable {
-                    spec: VariableSpec { name: "x".into() },
+                    spec: VariableSpec {
+                        name: "x".into(),
+                        is_mutable: false
+                    },
                     value: Box::new(Expression::Integer(0)),
                 })],
             },
@@ -245,8 +248,10 @@ mod tests {
                     parameters: vec![],
                     body: Expression::Block(Block {
                         body: vec![Statement::VariableDefinition(VariableDefinition {
-                            name: "x".into(),
-                            is_mutable: false,
+                            spec: VariableSpec {
+                                name: "x".into(),
+                                is_mutable: false,
+                            },
                             value: Some(Box::new(Expression::Integer(1)))
                         })],
                         last: None
@@ -271,8 +276,10 @@ mod tests {
                     parameters: vec![],
                     body: Expression::Block(Block {
                         body: vec![Statement::VariableDefinition(VariableDefinition {
-                            name: "x".into(),
-                            is_mutable: true,
+                            spec: VariableSpec {
+                                name: "x".into(),
+                                is_mutable: true,
+                            },
                             value: Some(Box::new(Expression::Integer(1)))
                         })],
                         last: None

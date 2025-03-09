@@ -43,7 +43,10 @@ impl Definition {
         let value = Expression::parse(tokens)?;
         tokens.expect(Token::Semi)?;
         Ok(Self::Constant(Variable {
-            spec: VariableSpec { name: name.into() },
+            spec: VariableSpec {
+                name: name.into(),
+                is_mutable: false,
+            },
             value: Box::new(value),
         }))
     }
@@ -184,8 +187,10 @@ impl VariableDefinition {
         tokens.expect(Token::Equal)?;
         let value = Expression::parse(tokens)?;
         Ok(Self {
-            name: identifier.into(),
-            is_mutable,
+            spec: VariableSpec {
+                name: identifier.into(),
+                is_mutable,
+            },
             value: Some(Box::new(value)),
         })
     }

@@ -1,4 +1,4 @@
-use crate::ast::{BinOp, Block, Expression, Function, Module, Statement, Variable, VariableDefinition};
+use crate::ast::{BinOp, Block, Expression, Function, Module, Statement, Variable, VariableDefinition, VariableSpec};
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module as LLVMModule;
@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 enum NamedValue<'ctx> {
     Constant,
-    Variable(PointerValue<'ctx>),
+    Variable(VariableSpec, PointerValue<'ctx>),
 }
 
 pub struct Compiler<'a, 'ctx> {
@@ -93,7 +93,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                         .build_load(self.context.i32_type(), c.as_pointer_value(), "loadconst")
                         .map(BasicValueEnum::into_int_value)
                 }
-                Some(NamedValue::Variable(ptr)) => self
+                Some(NamedValue::Variable(_, ptr)) => self
                     .builder
                     .build_load(
                         self.context.i32_type(),
@@ -163,12 +163,12 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     ) -> Result<(), BuilderError> {
         let var = self
             .builder
-            .build_alloca(self.context.i32_type(), &def.name)?;
+            .build_alloca(self.context.i32_type(), &def.spec.name)?;
         if let Some(value) = &def.value {
             let value = self.compile_expression(value)?;
             self.builder.build_store(var, value)?;
         }
-        self.named_values.insert(def.name.clone(), NamedValue::Variable(var));
+        self.named_values.insert(def.spec.name.clone(), NamedValue::Variable(def.spec.clone(), var));
         Ok(())
     }
 }
