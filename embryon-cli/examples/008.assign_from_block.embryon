@@ -1,0 +1,8 @@
+fn main() {
+    let x = {
+        let x = 1;
+        let y = 2;
+        x + y
+    };
+    x
+}
