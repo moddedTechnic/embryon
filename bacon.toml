@@ -14,15 +14,30 @@ command = [
     "--all-targets",
     "--color", "always",
 	"--",
-	"-A", "clippy::bool_to_int_with_if",
-	"-A", "clippy::collapsible_else_if",
-	"-A", "clippy::collapsible_if",
-	"-A", "clippy::derive_partial_eq_without_eq",
-	"-A", "clippy::get_first",
-	"-A", "clippy::if_same_then_else",
-	"-A", "clippy::len_without_is_empty",
-	"-A", "clippy::map_entry",
-	"-A", "clippy::while_let_on_iterator",
+	"-W", "clippy::derive_partial_eq_without_eq",
+    "-W", "clippy::if_not_else",
+	"-W", "clippy::if_then_some_else_none",
+    "-W", "clippy::ignored_unit_patterns",
+]
+need_stdout = false
+
+[jobs.clippy-strict]
+command = [
+    "cargo", "clippy",
+    "--all-targets",
+    "--color", "always",
+	"--",
+	"-W", "clippy::derive_partial_eq_without_eq",
+	"-W", "clippy::if_then_some_else_none",
+    "-W", "clippy::ignored_unit_patterns",
+
+    # enable pedantic lints
+    "-W", "clippy::pedantic",
+    "-W", "clippy::panic",
+    "-D", "clippy::panic_in_result_fn",
+    # allow documentation errors
+    "-A", "clippy::missing_errors_doc",
+    "-A", "clippy::missing_panics_doc",
 ]
 need_stdout = false
 
