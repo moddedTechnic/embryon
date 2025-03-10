@@ -1,10 +1,11 @@
 use crate::parse::ParseError;
 use crate::tokens::Token;
+use std::collections::VecDeque;
 use std::rc::Rc;
 
 pub struct TokenStream {
     source: Rc<str>,
-    head: Option<Token>,
+    head: VecDeque<Token>,
     cursor: usize,
 }
 
@@ -12,16 +13,13 @@ impl TokenStream {
     pub fn new(source: Rc<str>) -> Self {
         Self {
             source,
-            head: None,
+            head: VecDeque::new(),
             cursor: 0,
         }
     }
 
     pub fn peek(&mut self) -> Option<&Token> {
-        if self.head.is_none() {
-            self.read_next();
-        }
-        self.head.as_ref()
+        self.peek_ahead(0)
     }
 
     pub fn expect(&mut self, token: Token) -> Result<Token, ParseError> {
@@ -66,13 +64,13 @@ impl TokenStream {
     fn skip_comment(&mut self) {
         self.skip_whitespace();
         if self.peek_char(0) != Some('/') {
-            return
+            return;
         }
         if self.peek_char(1) == Some('/') {
             self.skip_until("\n");
             self.skip_whitespace();
             self.skip_comment();
-            return
+            return;
         }
         if self.peek_char(1) == Some('*') {
             self.skip_until("*/");
@@ -82,28 +80,41 @@ impl TokenStream {
         }
     }
 
-    fn read_next(&mut self) {
+    fn read_next(&mut self) -> Option<Token> {
+        let h = self.peek_ahead(0).cloned();
+        self.consume();
+        h
+    }
+
+    pub fn peek_ahead(&mut self, n: usize) -> Option<&Token> {
+        if n < self.head.len() {
+            let h = self.head.get(n);
+            return h;
+        }
         if self.cursor >= self.source.len() {
-            self.head = None;
-            return;
+            // There are no more tokens to get
+            return None;
         }
         self.skip_comment();
-        let c = self.peek_char(0);
-        let c = if let Some(c) = c {
-            c
-        } else {
-            self.head = None;
-            return;
-        };
+        let c = self.peek_char(0)?;
         if let Some(token) = Self::from_symbol(c) {
             self.cursor += 1;
-            self.head = Some(token);
+            self.head.push_back(token);
         } else {
-            self.head = match c {
-                '0'..='9' => self.read_number(),
-                _ => self.read_identifier(),
-            }
+            let token = match c {
+                '0'..='9' => self.read_number()?,
+                _ => self.read_identifier()?,
+            };
+            self.head.push_back(token);
         };
+
+        self.peek_ahead(n)
+    }
+
+    fn consume(&mut self) {
+        if !self.head.is_empty() {
+            self.head.pop_front();
+        }
     }
 
     fn from_symbol(symbol: char) -> Option<Token> {
@@ -165,10 +176,7 @@ impl Iterator for TokenStream {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.head.is_none() {
-            self.read_next();
-        }
-        self.head.take()
+        self.read_next()
     }
 }
 
