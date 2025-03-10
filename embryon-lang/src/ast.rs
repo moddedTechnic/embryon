@@ -37,6 +37,7 @@ pub enum Expression {
     Variable(Rc<str>),
     BinOp(BinOp),
     Block(Block),
+    VariableAssignment(VariableAssignment),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,4 +64,10 @@ pub enum Statement {
 pub struct VariableDefinition {
     pub spec: VariableSpec,
     pub value: Option<Box<Expression>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VariableAssignment {
+    pub name: Rc<str>,
+    pub value: Box<Expression>,
 }

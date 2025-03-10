@@ -290,21 +290,46 @@ mod tests {
     }
 
     #[test]
-    fn use_variable() {
+    fn variable_access() {
         let source = "fn main() { x }";
         let mut tokens = crate::lexer::TokenStream::new(source.into());
-        let program = Module::parse_body(&mut tokens, "let_mutable".into()).unwrap();
+        let program = Module::parse_body(&mut tokens, "variable_access".into()).unwrap();
 
         assert_eq!(
             program,
             Module {
-                name: "let_mutable".into(),
+                name: "variable_access".into(),
                 definitions: vec![Definition::Function(Function {
                     name: "main".into(),
                     parameters: vec![],
                     body: Expression::Block(Block {
                         body: vec![],
                         last: Some(Box::new(Expression::Variable("x".into())))
+                    })
+                })],
+            },
+        )
+    }
+
+    #[test]
+    fn variable_assign() {
+        let source = "fn main() { x = 2 }";
+        let mut tokens = crate::lexer::TokenStream::new(source.into());
+        let program = Module::parse_body(&mut tokens, "variable_assign".into()).unwrap();
+
+        assert_eq!(
+            program,
+            Module {
+                name: "variable_assign".into(),
+                definitions: vec![Definition::Function(Function {
+                    name: "main".into(),
+                    parameters: vec![],
+                    body: Expression::Block(Block {
+                        body: vec![],
+                        last: Some(Box::new(Expression::VariableAssignment(VariableAssignment {
+                            name: "x".into(),
+                            value: Box::new(Expression::Integer(2))
+                        })))
                     })
                 })],
             },

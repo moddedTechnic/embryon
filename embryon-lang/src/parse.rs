@@ -1,6 +1,6 @@
 use crate::ast::{
     BinOp, Block, Definition, Expression, Function, Module, Statement, Variable,
-    VariableDefinition, VariableSpec,
+    VariableAssignment, VariableDefinition, VariableSpec,
 };
 use crate::lexer::TokenStream;
 use crate::tokens::Token;
@@ -69,6 +69,23 @@ impl Function {
 
 impl Expression {
     pub fn parse(tokens: &mut TokenStream) -> Result<Self, ParseError> {
+        let head = tokens.peek().ok_or(ParseError::UnexpectedEoF)?.clone();
+        if let Token::Identifier(name) = head {
+            let next_two = (tokens.peek_ahead(1).cloned(), tokens.peek_ahead(2).cloned());
+            match next_two {
+                (Some(Token::Equal), Some(Token::Equal)) => (),
+                (Some(Token::Equal), Some(_)) => {
+                    tokens.expect_identifier()?;
+                    tokens.expect(Token::Equal)?;
+                    let value = Expression::parse(tokens)?;
+                    return Ok(Self::VariableAssignment(VariableAssignment {
+                        name: name.clone(),
+                        value: Box::new(value),
+                    }));
+                }
+                _ => (),
+            }
+        }
         Self::parse_expression(tokens)
     }
 

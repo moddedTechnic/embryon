@@ -1,4 +1,4 @@
-use crate::ast::{BinOp, Block, Expression, Function, Module, Statement, Variable, VariableDefinition, VariableSpec};
+use crate::ast::{BinOp, Block, Expression, Function, Module, Statement, Variable, VariableAssignment, VariableDefinition, VariableSpec};
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module as LLVMModule;
@@ -6,6 +6,7 @@ use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
 use std::collections::HashMap;
 use std::rc::Rc;
 
+#[derive(Clone, Debug)]
 enum NamedValue<'ctx> {
     Constant,
     Variable(VariableSpec, PointerValue<'ctx>),
@@ -38,7 +39,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
     pub fn compile_module(&mut self, module: &Module) -> Result<(), BuilderError> {
         println!("Compiling");
-        println!("{:?}", module.definitions);
+        println!("{:#?}", module.definitions);
         for definition in &module.definitions {
             match definition {
                 crate::ast::Definition::Function(function) => self.compile_function(function)?,
@@ -83,28 +84,49 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     ) -> Result<IntValue<'ctx>, BuilderError> {
         match expression {
             Expression::Integer(x) => Ok(self.context.i32_type().const_int(*x, false)),
-            Expression::Variable(name) => match self.named_values.get(name) {
-                Some(NamedValue::Constant) => {
-                    let c = self
-                        .module
-                        .get_global(name)
-                        .unwrap_or_else(|| panic!("Constant {} not found", name));
-                    self.builder
-                        .build_load(self.context.i32_type(), c.as_pointer_value(), "loadconst")
-                        .map(BasicValueEnum::into_int_value)
-                }
-                Some(NamedValue::Variable(_, ptr)) => self
-                    .builder
-                    .build_load(
-                        self.context.i32_type(),
-                        *ptr,
-                        &format!("load_{}", name),
-                    )
-                    .map(BasicValueEnum::into_int_value),
-                None => panic!("Variable {} not found", name),
-            },
+            Expression::Variable(name) => self.compile_variable_access(name),
+            Expression::VariableAssignment(assign) => self.compile_variable_assign(assign),
             Expression::BinOp(op) => self.compile_binop(op),
             Expression::Block(block) => self.compile_block(block),
+        }
+    }
+
+    fn compile_variable_access(&mut self, name: &Rc<str>) -> Result<IntValue<'ctx>, BuilderError> {
+        match self.named_values.get(name) {
+            Some(NamedValue::Constant) => {
+                let c = self
+                    .module
+                    .get_global(name)
+                    .unwrap_or_else(|| panic!("Constant {} not found", name));
+                self.builder
+                    .build_load(self.context.i32_type(), c.as_pointer_value(), "loadconst")
+                    .map(BasicValueEnum::into_int_value)
+            }
+            Some(NamedValue::Variable(_, ptr)) => self
+                .builder
+                .build_load(
+                    self.context.i32_type(),
+                    *ptr,
+                    &format!("load_{}", name),
+                )
+                .map(BasicValueEnum::into_int_value),
+            None => panic!("Variable {} not found", name),
+        }
+    }
+
+    fn compile_variable_assign(&mut self, assign: &VariableAssignment) -> Result<IntValue<'ctx>, BuilderError> {
+        let named_value = self.named_values.get(&assign.name).cloned();
+        match named_value {
+            Some(NamedValue::Constant) => panic!("Can't reassign to constant"),
+            Some(NamedValue::Variable(spec, ptr)) => {
+                if !spec.is_mutable {
+                    panic!("Variable {} is not mutable", spec.name);
+                }
+                let value = self.compile_expression(&assign.value)?;
+                self.builder.build_store(ptr, value)?;
+                Ok(value)
+            }
+            None => panic!("Variable {} not found", assign.name),
         }
     }
 
