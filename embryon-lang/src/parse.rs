@@ -155,7 +155,7 @@ impl Expression {
     fn parse_block(tokens: &mut TokenStream) -> Result<Self, ParseError> {
         let mut body = Vec::new();
         let mut last = None;
-        while !matches!(tokens.peek(), Some(Token::CloseBrace) | Some(Token::Semi)) {
+        while !matches!(tokens.peek(), Some(Token::CloseBrace | Token::Semi)) {
             let expr = Statement::parse(tokens)?;
             match tokens.peek() {
                 Some(Token::Semi) => {

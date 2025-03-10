@@ -18,13 +18,13 @@ pub fn parse(mut tokens: lexer::TokenStream) -> Result<ast::Module, parse::Parse
     ast::Module::parse_body(&mut tokens, "main".into())
 }
 
-pub fn compile(program: ast::Module, path: &Path) {
+pub fn compile(program: &ast::Module, path: &Path) {
     let context = Context::create();
     let module = context.create_module(path.file_stem().unwrap().to_str().unwrap());
     let builder = context.create_builder();
 
     let mut compiler = Compiler::new(&context, &builder, &module);
-    compiler.compile_module(&program).unwrap();
+    compiler.compile_module(program).unwrap();
 
     // Write ll to file
     module.print_to_file(path.with_extension("ll")).unwrap();
@@ -98,7 +98,7 @@ mod tests {
                     ))
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod tests {
                     ))
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -142,7 +142,7 @@ mod tests {
                     ))
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -164,7 +164,7 @@ mod tests {
                     ))
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -186,7 +186,7 @@ mod tests {
                     })
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
                     })
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -230,7 +230,7 @@ mod tests {
                     })
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -258,7 +258,7 @@ mod tests {
                     })
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -286,7 +286,7 @@ mod tests {
                     })
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -308,7 +308,7 @@ mod tests {
                     })
                 })],
             },
-        )
+        );
     }
 
     #[test]
@@ -326,13 +326,15 @@ mod tests {
                     parameters: vec![],
                     body: Expression::Block(Block {
                         body: vec![],
-                        last: Some(Box::new(Expression::VariableAssignment(VariableAssignment {
-                            name: "x".into(),
-                            value: Box::new(Expression::Integer(2))
-                        })))
+                        last: Some(Box::new(Expression::VariableAssignment(
+                            VariableAssignment {
+                                name: "x".into(),
+                                value: Box::new(Expression::Integer(2))
+                            }
+                        )))
                     })
                 })],
             },
-        )
+        );
     }
 }

@@ -1,4 +1,7 @@
-use crate::ast::{BinOp, Block, Expression, Function, Module, Statement, Variable, VariableAssignment, VariableDefinition, VariableSpec};
+use crate::ast::{
+    BinOp, Block, Expression, Function, Module, Statement, Variable, VariableAssignment,
+    VariableDefinition, VariableSpec,
+};
 use inkwell::builder::{Builder, BuilderError};
 use inkwell::context::Context;
 use inkwell::module::Module as LLVMModule;
@@ -71,7 +74,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         let name = constant.spec.name.clone();
         let value = self.compile_expression(&constant.value)?;
         let const_type = self.context.i32_type();
-        let constant = self.module.add_global(const_type, None, &constant.spec.name);
+        let constant = self
+            .module
+            .add_global(const_type, None, &constant.spec.name);
         constant.set_constant(true);
         constant.set_initializer(&value);
         self.named_values.insert(name, NamedValue::Constant);
@@ -97,31 +102,28 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 let c = self
                     .module
                     .get_global(name)
-                    .unwrap_or_else(|| panic!("Constant {} not found", name));
+                    .unwrap_or_else(|| panic!("Constant {name} not found"));
                 self.builder
                     .build_load(self.context.i32_type(), c.as_pointer_value(), "loadconst")
                     .map(BasicValueEnum::into_int_value)
             }
             Some(NamedValue::Variable(_, ptr)) => self
                 .builder
-                .build_load(
-                    self.context.i32_type(),
-                    *ptr,
-                    &format!("load_{}", name),
-                )
+                .build_load(self.context.i32_type(), *ptr, &format!("load_{name}"))
                 .map(BasicValueEnum::into_int_value),
-            None => panic!("Variable {} not found", name),
+            None => panic!("Variable {name} not found"),
         }
     }
 
-    fn compile_variable_assign(&mut self, assign: &VariableAssignment) -> Result<IntValue<'ctx>, BuilderError> {
+    fn compile_variable_assign(
+        &mut self,
+        assign: &VariableAssignment,
+    ) -> Result<IntValue<'ctx>, BuilderError> {
         let named_value = self.named_values.get(&assign.name).cloned();
         match named_value {
             Some(NamedValue::Constant) => panic!("Can't reassign to constant"),
             Some(NamedValue::Variable(spec, ptr)) => {
-                if !spec.is_mutable {
-                    panic!("Variable {} is not mutable", spec.name);
-                }
+                assert!(!spec.is_mutable, "Variable {} is not mutable", spec.name);
                 let value = self.compile_expression(&assign.value)?;
                 self.builder.build_store(ptr, value)?;
                 Ok(value)
@@ -160,8 +162,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             .body
             .iter()
             .map(|stmt| self.compile_statement(stmt))
-            .filter_map(Result::err)
-            .next()
+            .find_map(Result::err)
         {
             return Err(err);
         }
@@ -190,7 +191,10 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             let value = self.compile_expression(value)?;
             self.builder.build_store(var, value)?;
         }
-        self.named_values.insert(def.spec.name.clone(), NamedValue::Variable(def.spec.clone(), var));
+        self.named_values.insert(
+            def.spec.name.clone(),
+            NamedValue::Variable(def.spec.clone(), var),
+        );
         Ok(())
     }
 }

@@ -3,6 +3,7 @@ use crate::tokens::Token;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
+#[must_use = "A TokenStream does nothing unless iterated over or queried"]
 pub struct TokenStream {
     source: Rc<str>,
     head: VecDeque<Token>,
@@ -102,7 +103,7 @@ impl TokenStream {
             self.head.push_back(token);
         } else {
             let token = match c {
-                '0'..='9' => self.read_number()?,
+                '0'..='9' => self.read_number(),
                 _ => self.read_identifier()?,
             };
             self.head.push_back(token);
@@ -133,9 +134,9 @@ impl TokenStream {
         }
     }
 
-    fn read_number(&mut self) -> Option<Token> {
+    fn read_number(&mut self) -> Token {
         let start = self.cursor;
-        while let Some(c) = self.source.get(self.cursor..self.cursor + 1) {
+        while let Some(c) = self.source.get(self.cursor..=self.cursor) {
             if c.chars().all(|c| c.is_ascii_digit()) {
                 self.cursor += 1;
             } else {
@@ -148,12 +149,12 @@ impl TokenStream {
             .unwrap()
             .parse()
             .unwrap();
-        Some(Token::Integer(value))
+        Token::Integer(value)
     }
 
     fn read_identifier(&mut self) -> Option<Token> {
         let start = self.cursor;
-        while let Some(c) = self.source.get(self.cursor..self.cursor + 1) {
+        while let Some(c) = self.source.get(self.cursor..=self.cursor) {
             if c.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
                 self.cursor += 1;
             } else {

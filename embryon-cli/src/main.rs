@@ -12,7 +12,7 @@ fn main() {
     let source = std::fs::read_to_string(&args.input).unwrap();
     let tokens = embryon_lang::lex(&source);
     let program = embryon_lang::parse(tokens).expect("failed to compile program");
-    embryon_lang::compile(program, &args.input);
+    embryon_lang::compile(&program, &args.input);
 
     // let asm = args.input.with_extension("s");
 
