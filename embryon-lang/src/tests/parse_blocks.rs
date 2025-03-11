@@ -13,10 +13,7 @@ fn fn_empty_block() {
             definitions: vec![Definition::Function(Function {
                 name: "main".into(),
                 parameters: vec![],
-                body: Expression::Block(Block {
-                    body: vec![],
-                    last: None
-                })
+                body: Expression::Block(Block::empty())
             })],
         },
     );
@@ -35,10 +32,7 @@ fn fn_simple_block() {
             definitions: vec![Definition::Function(Function {
                 name: "main".into(),
                 parameters: vec![],
-                body: Expression::Block(Block {
-                    body: vec![],
-                    last: Some(Box::new(Expression::Integer(0)))
-                })
+                body: Block::from(Expression::Integer(0)).into(),
             })],
         },
     );

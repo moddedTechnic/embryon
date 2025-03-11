@@ -167,6 +167,7 @@ impl TokenStream {
             "let" => Some(Token::Let),
             "mut" => Some(Token::Mut),
             "fn" => Some(Token::Fn),
+            "loop" => Some(Token::Loop),
             _ if !name.is_empty() => Some(Token::Identifier(Rc::from(name))),
             _ => None,
         }
@@ -219,12 +220,19 @@ mod tests {
 
     #[test]
     fn lex_keywords() {
+        // Definitions
         let source = "const let mut fn";
         let mut lex = TokenStream::new(source.into());
         assert_eq!(lex.next(), Some(Token::Const));
         assert_eq!(lex.next(), Some(Token::Let));
         assert_eq!(lex.next(), Some(Token::Mut));
         assert_eq!(lex.next(), Some(Token::Fn));
+        assert_eq!(lex.next(), None);
+
+        // Loop keywords
+        let source = "loop";
+        let mut lex = TokenStream::new(source.into());
+        assert_eq!(lex.next(), Some(Token::Loop));
         assert_eq!(lex.next(), None);
     }
 

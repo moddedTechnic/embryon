@@ -1,5 +1,25 @@
 use std::rc::Rc;
 
+macro_rules! impl_from {
+    ($type:ty | $src:ty => $variant:ident) => {
+        impl From<$src> for $type {
+            fn from(value: $src) -> Self {
+                Self::$variant(value)
+            }
+        }
+    };
+    ($type:ty | $src:ident) => {
+        impl_from!($type | $src => $src);
+    };
+    ($type:ty | $($src:ident => $variant:ident),+) => {
+        $(impl_from!($type | $src => $variant);)+
+    };
+    ($type:ty | $src:ident, $($rest:tt),+) => {
+        impl_from!($type | $src);
+        impl_from!($type | $($rest),+);
+    };
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
     pub name: Rc<str>,
@@ -11,6 +31,9 @@ pub enum Definition {
     Function(Function),
     Constant(Variable),
 }
+
+impl_from!(Definition | Variable => Constant);
+impl_from!(Definition | Function);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function {
@@ -38,7 +61,11 @@ pub enum Expression {
     BinOp(BinOp),
     Block(Block),
     VariableAssignment(VariableAssignment),
+    Loop(Box<Expression>),
 }
+
+impl_from!(Expression | u64 => Integer);
+impl_from!(Expression | BinOp, Block, VariableAssignment);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinOp {
@@ -48,10 +75,34 @@ pub enum BinOp {
     Div(Box<Expression>, Box<Expression>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Block {
     pub body: Vec<Statement>,
     pub last: Option<Box<Expression>>,
+}
+
+impl Block {
+    pub fn empty() -> Self {
+        Self::default()
+    }
+}
+
+impl From<Expression> for Block {
+    fn from(expr: Expression) -> Self {
+        Self {
+            body: vec![],
+            last: Some(Box::new(expr)),
+        }
+    }
+}
+
+impl FromIterator<Statement> for Block {
+    fn from_iter<T: IntoIterator<Item = Statement>>(iter: T) -> Self {
+        Self {
+            body: iter.into_iter().collect(),
+            last: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,6 +110,8 @@ pub enum Statement {
     Expression(Expression),
     VariableDefinition(VariableDefinition),
 }
+
+impl_from!(Statement | Expression, VariableDefinition);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableDefinition {
