@@ -52,7 +52,7 @@ fn fn_compound_block() {
                 name: "main".into(),
                 parameters: vec![],
                 body: Expression::Block(Block {
-                    body: vec![Statement::Expression(Expression::Integer(1))],
+                    body: vec![Expression::Integer(1).into()],
                     last: Some(Box::new(Expression::Integer(2)))
                 })
             })],

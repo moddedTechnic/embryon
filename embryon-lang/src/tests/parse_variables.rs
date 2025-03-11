@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::utils::IntoExpression;
 
 #[test]
 fn let_immutable() {
@@ -13,16 +14,17 @@ fn let_immutable() {
             definitions: vec![Definition::Function(Function {
                 name: "main".into(),
                 parameters: vec![],
-                body: Expression::Block(Block {
-                    body: vec![Statement::VariableDefinition(VariableDefinition {
-                        spec: VariableSpec {
-                            name: "x".into(),
-                            is_mutable: false,
-                        },
-                        value: Some(Box::new(Expression::Integer(1)))
-                    })],
+                body: Block {
+                    body: vec![
+                        VariableDefinition {
+                            spec: VariableSpec::new("x"),
+                            value: Expression::Integer(1).into()
+                        }
+                        .into()
+                    ],
                     last: None
-                })
+                }
+                .into()
             })],
         },
     );
@@ -41,16 +43,14 @@ fn let_mutable() {
             definitions: vec![Definition::Function(Function {
                 name: "main".into(),
                 parameters: vec![],
-                body: Expression::Block(Block {
-                    body: vec![Statement::VariableDefinition(VariableDefinition {
-                        spec: VariableSpec {
-                            name: "x".into(),
-                            is_mutable: true,
-                        },
-                        value: Some(Box::new(Expression::Integer(1)))
-                    })],
-                    last: None
-                })
+                body: Block::from(vec![
+                    VariableDefinition {
+                        spec: VariableSpec::new("x").mutable(),
+                        value: Expression::Integer(1).into()
+                    }
+                    .into()
+                ],)
+                .into()
             })],
         },
     );
@@ -69,10 +69,7 @@ fn variable_access() {
             definitions: vec![Definition::Function(Function {
                 name: "main".into(),
                 parameters: vec![],
-                body: Expression::Block(Block {
-                    body: vec![],
-                    last: Some(Box::new(Expression::Variable("x".into())))
-                })
+                body: Block::from(Expression::Variable("x".into())).into()
             })],
         },
     );
@@ -91,15 +88,14 @@ fn variable_assign() {
             definitions: vec![Definition::Function(Function {
                 name: "main".into(),
                 parameters: vec![],
-                body: Expression::Block(Block {
-                    body: vec![],
-                    last: Some(Box::new(Expression::VariableAssignment(
-                        VariableAssignment {
-                            name: "x".into(),
-                            value: Box::new(Expression::Integer(2))
-                        }
-                    )))
-                })
+                body: Block::from(
+                    VariableAssignment {
+                        name: "x".into(),
+                        value: Box::new(Expression::Integer(2))
+                    }
+                    .into_expression()
+                )
+                .into()
             })],
         },
     );

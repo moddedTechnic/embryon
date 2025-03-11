@@ -48,6 +48,22 @@ pub struct VariableSpec {
     pub is_mutable: bool,
 }
 
+impl VariableSpec {
+    pub fn new(name: impl Into<Rc<str>>) -> Self {
+        Self {
+            name: name.into(),
+            is_mutable: false,
+        }
+    }
+
+    pub fn mutable(self) -> Self {
+        Self {
+            is_mutable: true,
+            ..self
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variable {
     pub spec: VariableSpec,
@@ -66,6 +82,12 @@ pub enum Expression {
 
 impl_from!(Expression | u64 => Integer);
 impl_from!(Expression | BinOp, Block, VariableAssignment);
+
+impl From<Expression> for Option<Box<Expression>> {
+    fn from(expr: Expression) -> Self {
+        Some(Box::new(expr))
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinOp {
@@ -102,6 +124,12 @@ impl FromIterator<Statement> for Block {
             body: iter.into_iter().collect(),
             last: None,
         }
+    }
+}
+
+impl<T> From<T> for Block where T: IntoIterator<Item = Statement> {
+    fn from(iter: T) -> Self {
+        Self::from_iter(iter)
     }
 }
 

@@ -13,9 +13,9 @@ fn empty_loop() {
             definitions: vec![Definition::Function(Function {
                 name: "main".into(),
                 parameters: vec![],
-                body: Expression::Block(Block::from(
+                body: Block::from(
                     Expression::Loop(Box::new(Block::empty().into()))
-                ))
+                ).into()
             })],
         },
     );
