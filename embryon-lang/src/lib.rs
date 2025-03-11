@@ -9,6 +9,7 @@ mod compile;
 pub mod lexer;
 pub mod parse;
 pub mod tokens;
+pub mod utils;
 
 #[cfg(test)]
 mod tests;

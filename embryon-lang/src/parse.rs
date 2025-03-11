@@ -70,21 +70,25 @@ impl Function {
 impl Expression {
     pub fn parse(tokens: &mut TokenStream) -> Result<Self, ParseError> {
         let head = tokens.peek().ok_or(ParseError::UnexpectedEoF)?.clone();
-        if let Token::Identifier(name) = head {
-            let next_two = (tokens.peek_ahead(1).cloned(), tokens.peek_ahead(2).cloned());
-            match next_two {
-                (Some(Token::Equal), Some(Token::Equal)) => (),
-                (Some(Token::Equal), Some(_)) => {
-                    tokens.expect_identifier()?;
-                    tokens.expect(Token::Equal)?;
-                    let value = Expression::parse(tokens)?;
-                    return Ok(Self::VariableAssignment(VariableAssignment {
-                        name: name.clone(),
-                        value: Box::new(value),
-                    }));
+        match head {
+            Token::Loop => return Self::parse_loop(tokens),
+            Token::Identifier(name) => {
+                let next_two = (tokens.peek_ahead(1).cloned(), tokens.peek_ahead(2).cloned());
+                match next_two {
+                    (Some(Token::Equal), Some(Token::Equal)) => (),
+                    (Some(Token::Equal), Some(_)) => {
+                        tokens.expect_identifier()?;
+                        tokens.expect(Token::Equal)?;
+                        let value = Expression::parse(tokens)?;
+                        return Ok(Self::VariableAssignment(VariableAssignment {
+                            name: name.clone(),
+                            value: Box::new(value),
+                        }));
+                    }
+                    _ => (),
                 }
-                _ => (),
             }
+            _ => (),
         }
         Self::parse_expression(tokens)
     }
@@ -179,6 +183,16 @@ impl Expression {
             body,
             last: last.map(Box::new),
         }))
+    }
+
+    fn parse_loop(tokens: &mut TokenStream) -> Result<Self, ParseError> {
+        tokens.expect(Token::Loop)?;
+        let needs_semi = tokens.peek().is_none_or(|token| !matches!(token, Token::OpenBrace));
+        let body = Expression::parse(tokens)?;
+        if needs_semi {
+            tokens.expect(Token::Semi)?;
+        }
+        Ok(Self::Loop(Box::new(body)))
     }
 }
 

@@ -93,6 +93,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             Expression::VariableAssignment(assign) => self.compile_variable_assign(assign),
             Expression::BinOp(op) => self.compile_binop(op),
             Expression::Block(block) => self.compile_block(block),
+            Expression::Loop(_body) => todo!("compile loop"),
         }
     }
 

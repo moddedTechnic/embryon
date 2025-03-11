@@ -6,6 +6,7 @@ pub enum Token {
     Let,
     Mut,
     Fn,
+    Loop,
     OpenParen,
     CloseParen,
     OpenBrace,
