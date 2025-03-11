@@ -127,7 +127,10 @@ impl FromIterator<Statement> for Block {
     }
 }
 
-impl<T> From<T> for Block where T: IntoIterator<Item = Statement> {
+impl<T> From<T> for Block
+where
+    T: IntoIterator<Item = Statement>,
+{
     fn from(iter: T) -> Self {
         Self::from_iter(iter)
     }

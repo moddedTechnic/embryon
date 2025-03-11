@@ -187,7 +187,9 @@ impl Expression {
 
     fn parse_loop(tokens: &mut TokenStream) -> Result<Self, ParseError> {
         tokens.expect(Token::Loop)?;
-        let needs_semi = tokens.peek().is_none_or(|token| !matches!(token, Token::OpenBrace));
+        let needs_semi = tokens
+            .peek()
+            .is_none_or(|token| !matches!(token, Token::OpenBrace));
         let body = Expression::parse(tokens)?;
         if needs_semi {
             tokens.expect(Token::Semi)?;
