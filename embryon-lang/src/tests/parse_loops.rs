@@ -77,3 +77,22 @@ fn complex_block_loop() {
         },
     );
 }
+
+#[test]
+fn break_loop() {
+    let source = "fn main() { loop break; }";
+    let mut tokens = crate::lexer::TokenStream::new(source.into());
+    let program = Module::parse_body(&mut tokens, "break_loop".into()).unwrap();
+
+    assert_eq!(
+        program,
+        Module {
+            name: "break_loop".into(),
+            definitions: vec![Definition::Function(Function {
+                name: "main".into(),
+                parameters: vec![],
+                body: Block::from(Expression::Loop(Box::new(Expression::Break))).into()
+            })]
+        }
+    )
+}

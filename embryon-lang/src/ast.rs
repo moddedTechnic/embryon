@@ -78,6 +78,7 @@ pub enum Expression {
     Block(Block),
     VariableAssignment(VariableAssignment),
     Loop(Box<Expression>),
+    Break, Continue,
 }
 
 impl_from!(Expression | u64 => Integer);

@@ -7,6 +7,8 @@ pub enum Token {
     Mut,
     Fn,
     Loop,
+    Break,
+    Continue,
     OpenParen,
     CloseParen,
     OpenBrace,

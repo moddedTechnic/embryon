@@ -23,8 +23,11 @@ pub fn parse(mut tokens: lexer::TokenStream) -> Result<ast::Module, parse::Parse
 }
 
 pub fn compile(program: &ast::Module, path: &Path) {
+    // TODO: we need an optimisation pass on the AST which removes unnecessary allocations,
+    //       as infinite loops with a stack allocation in the body currently cause a stack overflow
     let context = Context::create();
     let module = context.create_module(path.file_stem().unwrap().to_str().unwrap());
+    module.set_source_file_name(path.to_str().unwrap());
     let builder = context.create_builder();
 
     let mut compiler = Compiler::new(&context, &builder, &module);

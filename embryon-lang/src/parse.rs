@@ -72,6 +72,14 @@ impl Expression {
         let head = tokens.peek().ok_or(ParseError::UnexpectedEoF)?.clone();
         match head {
             Token::Loop => return Self::parse_loop(tokens),
+            Token::Break => {
+                tokens.next();
+                return Ok(Self::Break);
+            }
+            Token::Continue => {
+                tokens.next();
+                return Ok(Self::Continue);
+            }
             Token::Identifier(name) => {
                 let next_two = (tokens.peek_ahead(1).cloned(), tokens.peek_ahead(2).cloned());
                 match next_two {
@@ -217,14 +225,24 @@ impl VariableDefinition {
             false
         };
         let identifier = tokens.expect_identifier()?;
-        tokens.expect(Token::Equal)?;
-        let value = Expression::parse(tokens)?;
-        Ok(Self {
-            spec: VariableSpec {
-                name: identifier.into(),
-                is_mutable,
-            },
-            value: Some(Box::new(value)),
-        })
+        if matches!(tokens.peek(), Some(Token::Equal)) {
+            tokens.expect(Token::Equal)?;
+            let value = Expression::parse(tokens)?;
+            Ok(Self {
+                spec: VariableSpec {
+                    name: identifier.into(),
+                    is_mutable,
+                },
+                value: Some(Box::new(value)),
+            })
+        } else {
+            Ok(Self {
+                spec: VariableSpec {
+                    name: identifier.into(),
+                    is_mutable,
+                },
+                value: None,
+            })
+        }
     }
 }

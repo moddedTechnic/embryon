@@ -168,6 +168,8 @@ impl TokenStream {
             "mut" => Some(Token::Mut),
             "fn" => Some(Token::Fn),
             "loop" => Some(Token::Loop),
+            "break" => Some(Token::Break),
+            "continue" => Some(Token::Continue),
             _ if !name.is_empty() => Some(Token::Identifier(Rc::from(name))),
             _ => None,
         }
@@ -230,9 +232,11 @@ mod tests {
         assert_eq!(lex.next(), None);
 
         // Loop keywords
-        let source = "loop";
+        let source = "loop break continue";
         let mut lex = TokenStream::new(source.into());
         assert_eq!(lex.next(), Some(Token::Loop));
+        assert_eq!(lex.next(), Some(Token::Break));
+        assert_eq!(lex.next(), Some(Token::Continue));
         assert_eq!(lex.next(), None);
     }
 
